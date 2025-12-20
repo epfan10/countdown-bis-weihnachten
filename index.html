@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<title>Weihnachtscountdown</title>
+
+<style>
+html, body {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: "Segoe UI", Arial, sans-serif;
+    background: radial-gradient(circle at top, #1b3c59, #050b16);
+    color: white;
+}
+
+.container {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    text-align: center;
+}
+
+h1 {
+    font-size: 3rem;
+    margin-bottom: 25px;
+}
+
+#countdown {
+    font-size: 2.8rem;
+    letter-spacing: 2px;
+    background: rgba(255,255,255,0.15);
+    padding: 20px 40px;
+    border-radius: 15px;
+    backdrop-filter: blur(8px);
+    box-shadow: 0 0 25px rgba(255,255,255,0.2);
+    transition: opacity 0.6s ease;
+}
+
+#countdown.christmas {
+    font-size: 3.2rem;
+    text-shadow: 0 0 15px gold, 0 0 30px red;
+}
+
+/* ===== Schneefall ===== */
+.snow {
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    z-index: 1;
+}
+
+.snowflake {
+    position: absolute;
+    top: -10px;
+    color: white;
+    opacity: 0.8;
+    animation: fall linear infinite;
+}
+
+@keyframes fall {
+    from { transform: translateY(-10px); }
+    to   { transform: translateY(110vh); }
+}
+</style>
+</head>
+<body>
+
+<div class="snow" id="snow"></div>
+
+<div class="container">
+    <h1>🎄 Countdown bis Weihnachten 🎄</h1>
+    <div id="countdown">Lade Zeit …</div>
+</div>
+
+<script>
+const countdownEl = document.getElementById("countdown");
+
+/* ===== SERVERZEIT HOLEN ===== */
+async function getServerTime() {
+    try {
+        const res = await fetch("https://worldtimeapi.org/api/timezone/Europe/Berlin");
+        const data = await res.json();
+        return new Date(data.datetime);
+    } catch {
+        // Fallback: lokale Zeit
+        return new Date();
+    }
+}
+
+/* ===== LOGIK ===== */
+function isChristmasDay(date) {
+    return date.getMonth() === 11 && date.getDate() === 24;
+}
+
+function getNextTarget(date) {
+    let year = date.getFullYear();
+    let target = new Date(year, 11, 24, 0, 0, 0);
+    if (date > target) {
+        target = new Date(year + 1, 11, 24, 0, 0, 0);
+    }
+    return target;
+}
+
+function fadeText(text) {
+    countdownEl.style.opacity = 0;
+    setTimeout(() => {
+        countdownEl.innerHTML = text;
+        countdownEl.style.opacity = 1;
+    }, 600);
+}
+
+let currentTime;
+let targetTime;
+
+/* ===== HAUPTUPDATE ===== */
+async function start() {
+    currentTime = await getServerTime();
+    targetTime = getNextTarget(currentTime).getTime();
+
+    setInterval(() => {
+        currentTime = new Date(currentTime.getTime() + 1000);
+
+        // 🎄 24. Dezember
+        if (isChristmasDay(currentTime)) {
+            countdownEl.classList.add("christmas");
+            fadeText("🎅 Frohe Weihnachten!");
+            return;
+        } else {
+            countdownEl.classList.remove("christmas");
+        }
+
+        // 🔄 Reset ab 25.12.
+        if (currentTime.getTime() >= targetTime) {
+            targetTime = getNextTarget(currentTime).getTime();
+            fadeText("✨ Neues Weihnachtsjahr startet …");
+            return;
+        }
+
+        const diff = targetTime - currentTime.getTime();
+        const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+        const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+        const m = Math.floor((diff / (1000 * 60)) % 60);
+        const s = Math.floor((diff / 1000) % 60);
+
+        countdownEl.innerHTML =
+            `${d} Tage ${h} Std ${m} Min ${s} Sek`;
+    }, 1000);
+}
+
+/* ===== SCHNEEFLOCKEN ===== */
+const snowContainer = document.getElementById("snow");
+for (let i = 0; i < 80; i++) {
+    const flake = document.createElement("div");
+    flake.className = "snowflake";
+    flake.innerHTML = "❄";
+    flake.style.left = Math.random() * 100 + "vw";
+    flake.style.fontSize = (Math.random() * 1.5 + 0.5) + "em";
+    flake.style.animationDuration = (Math.random() * 5 + 5) + "s";
+    flake.style.animationDelay = Math.random() * 5 + "s";
+    snowContainer.appendChild(flake);
+}
+
+start();
+</script>
+
+</body>
+</html>
